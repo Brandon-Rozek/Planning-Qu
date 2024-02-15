@@ -47,9 +47,21 @@ def satisfies(s: BeliefState, requirements: Set[Prop]):
 def compute_belief_p():
     pass
 
+def compute_belief_n():
+    pass
+
 def apply(s: BeliefState, o: Operator) -> BeliefState:
     add_p_prime = set()
     for (c, l) in o.add_p:
         if satisfies_single(s, c):
             pass
             # add_p_prime.add(BeliefProp(l, compute_belief_p()))
+
+    add_n_prime = set()
+    for (c, l) in o.add_n:
+        if satisfies_single(s, c):
+            pass
+            # add_n_prime.add(BeliefProp(l, compute_belief_n()))
+        
+    del_prime = set()
+    # TODO
