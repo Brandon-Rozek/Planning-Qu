@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import total_ordering
 from itertools import chain, product
-from typing import Set, Optional, Tuple
+from typing import Set, Optional, Tuple, Union``
 
 __all__ = [
     'Prop', 'BeliefProp',
@@ -16,28 +16,31 @@ __all__ = [
 ]
 
 @total_ordering
-class BeliefLevel(Enum):
+class BeliefLevel5(Enum):
     CERTAINLY_NOT = -2
     EVIDENTLY_NOT = -1
-    NOTHING = 0 # TODO: Rename "no evidence for?" "neither here nor there?"
+    NOTHING = 0 # TODO: Rename to better capture "no belief for or against"
     EVIDENTLY = 1
     CERTAINLY = 2
 
     # NOTE: __eq__ already defined for Enums
 
     def __lt__(self, other):
-        if not isinstance(other, BeliefLevel):
-            return False
+        if not isinstance(other, self.__class__):
+            raise TypeError(f"'<' not supported between instances of '{type(self)}' and '{type(other)}")
         return self.value < other.value
 
     def inverse(self):
         return {
-            BeliefLevel.CERTAINLY_NOT: BeliefLevel.CERTAINLY,
-            BeliefLevel.EVIDENTLY_NOT: BeliefLevel.EVIDENTLY,
-            BeliefLevel.NOTHING: BeliefLevel.NOTHING,
-            BeliefLevel.EVIDENTLY: BeliefLevel.EVIDENTLY_NOT,
-            BeliefLevel.CERTAINLY: BeliefLevel.CERTAINLY_NOT
+            BeliefLevel5.CERTAINLY_NOT: BeliefLevel5.CERTAINLY,
+            BeliefLevel5.EVIDENTLY_NOT: BeliefLevel5.EVIDENTLY,
+            BeliefLevel5.NOTHING: BeliefLevel5.NOTHING,
+            BeliefLevel5.EVIDENTLY: BeliefLevel5.EVIDENTLY_NOT,
+            BeliefLevel5.CERTAINLY: BeliefLevel5.CERTAINLY_NOT
         }[self]
+
+
+BeliefLevel = BeliefLevel5
 
 @dataclass
 class Prop:
@@ -55,6 +58,7 @@ def strength(b: BeliefProp) -> BeliefLevel:
     return b.level
 
 BeliefState = Set[BeliefProp]
+
 
 class Operator:
     def __init__(
@@ -147,3 +151,46 @@ def check_proper(o: Operator) -> bool:
             return False
 
     return True
+
+
+class QU_STRIPS:
+    def __init__(
+            self,
+            P: Optional[Set[Prop]] = None,
+            P_sigma: Optional[Set[BeliefProp]] = None,
+            I: Optional[BeliefState] = None,
+            G: Optional[Set[Prop]] = None,
+            O: Optional[Set[Operator]] = None
+    ):
+        self.P = P if P is not None else set()
+        self.P_sigma = P_sigma if P_sigma is not None else set()
+        self.I = I if I is not None else set()
+        self.G = G if G is not None else set()
+        self.O = O if O is not None else set()
+
+        self.check_P_sigma()
+        self.check_I()
+        self.check_G()
+
+    def check_P_sigma(self):
+        count = 0
+        for p in self.P:
+            for sigma in list(BeliefLevel):
+                assert BeliefProp(p, sigma) in self.P_sigma
+                count += 1
+        assert count == len(self.P_sigma)
+
+    def check_I(self):
+        assert check_consistent(self.I)
+
+        count = 0
+        for p in self.P:
+            # Find belief level that's in I
+            sigma = next((s for s in list(BeliefLevel) if BeliefProp(p, s) in self.I), None)
+            assert sigma is not None, f"Formula {p} does not have an associated belief level in I."
+            count += 1
+
+        assert count == len(self.I)
+
+    def check_G(self):
+        assert self.G.is_subset(self.P)
