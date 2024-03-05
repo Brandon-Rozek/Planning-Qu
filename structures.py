@@ -6,13 +6,13 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import total_ordering
 from itertools import chain, product
-from typing import Set, Optional, Tuple, Union``
+from typing import Set, Optional, Tuple
 
 __all__ = [
     'Prop', 'BeliefProp',
     'Operator', 'satisfies',
     'apply', 'check_consistent',
-    'check_proper'
+    'check_proper', 'QU_STRIPS'
 ]
 
 @total_ordering
