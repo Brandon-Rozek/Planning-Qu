@@ -1,10 +1,14 @@
 from structures import (
     Prop,
     BeliefProp,
-    Operator,
-    QU_STRIPS
+    QU_STRIPS,
+    BeliefLevel
 )
-from grounding import ground_predicate, Pred
+from grounding import (
+    ground_predicate, Pred,
+    Lifted_Operator,
+    ground_lifted_operator
+)
 
 objects = {
     "location": ["A", "B", "C", "D", "E", "F", "H", "J"]
@@ -25,12 +29,45 @@ for p in predicates:
     for np in new_props:
         propositions.add(np)
 
-# TODO: Construct P_Sigma
-belief_predicates = NotImplemented
 
+# Construct P_Sigma
+belief_propositions = set()
 
-# TODO: Operators
-operators = NotImplemented
+for p in propositions:
+    for sigma in list(BeliefLevel):
+        belief_propositions.add(BeliefProp(p, sigma))
+
+# Operators
+
+lifted_operators = {
+    Lifted_Operator("move-agent",
+        # Parameters
+        [("?l1", "location"), ("?l2", "location")],
+        # Preconditions
+        {
+            Pred("at-agent", ["location"], ["?l1"]),
+            Pred("CONNECTED", ["location", "location"], ["?l1", "?l2"]),
+        },
+        # Add Positive Beliefs
+        {
+            (Pred("true"), Pred("at-agent", ["location"], ["?l2"])),
+            (Pred("at-trap", ["location"], ["?l2"]), Pred("caught"))
+        },
+        # Add Negative Beliefs
+        {
+            (Pred("true"), Pred("at-agent ?l1"))
+        }
+    )
+}
+
+operators = set()
+
+# Populate propositions using grounding
+for lo in lifted_operators:
+    grounded_operators = ground_lifted_operator(lo, objects)
+    for go in grounded_operators:
+        operators.add(go)
+
 
 initial_state = {
     BeliefProp("at-agent-A", 2),
@@ -122,4 +159,4 @@ goal = set(
      Prop("not-caught") # TODO: How do deal with negated goals?
 )
 
-problem = QU_STRIPS(propositions, belief_predicates, initial_state, goal, operators)
+problem = QU_STRIPS(propositions, belief_propositions, initial_state, goal, operators)
