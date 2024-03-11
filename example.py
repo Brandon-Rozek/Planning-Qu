@@ -18,6 +18,7 @@ predicates = {
     Pred("at-agent", ["location"]),
     Pred("at-trap", ["location"]),
     Pred("caught", []),
+    Pred("not-caught", []),
     Pred("CONNECTED", ["location", "location"])
 }
 
@@ -50,12 +51,13 @@ lifted_operators = {
         },
         # Add Positive Beliefs
         {
-            (Pred("true"), Pred("at-agent", ["location"], ["?l2"])),
-            (Pred("at-trap", ["location"], ["?l2"]), Pred("caught"))
+            (Pred("true", []), Pred("at-agent", ["location"], ["?l2"])),
+            (Pred("at-trap", ["location"], ["?l2"]), Pred("caught", []))
         },
         # Add Negative Beliefs
         {
-            (Pred("true"), Pred("at-agent ?l1"))
+            (Pred("true", []), Pred("at-agent", ['location'], ['?l1'])),
+            (Pred("at-trap", ["location"], ["?l2"]), Pred("not-caught", []))
         }
     )
 }
@@ -151,12 +153,22 @@ initial_state = {
     BeliefProp("CONNECTED-H-F", -2),
     BeliefProp("CONNECTED-H-H", -2),
 
-    BeliefProp("caught", -2)
+    BeliefProp("CONNECTED-J-A", -2),
+    BeliefProp("CONNECTED-J-B", -2),
+    BeliefProp("CONNECTED-J-C", -2),
+    BeliefProp("CONNECTED-J-D", -2),
+    BeliefProp("CONNECTED-J-E", -2),
+    BeliefProp("CONNECTED-J-F", -2),
+    BeliefProp("CONNECTED-J-H", -2),
+    BeliefProp("CONNECTED-J-J", -2),
+
+    BeliefProp("caught", -2),
+    BeliefProp("not-caught", 2)
 }
 
-goal = set(
+goal = {
      Prop("at-agent-J"),
-     Prop("not-caught") # TODO: How do deal with negated goals?
-)
+     Prop("not-caught")
+}
 
 problem = QU_STRIPS(propositions, belief_propositions, initial_state, goal, operators)

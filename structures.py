@@ -39,6 +39,12 @@ class BeliefLevel5(Enum):
             BeliefLevel5.CERTAINLY: BeliefLevel5.CERTAINLY_NOT
         }[self]
 
+    def __hash__(self):
+        return self.value
+
+    def __eq__(self, other):
+        return isinstance(other, BeliefLevel5) and self.value == other.value
+
 
 BeliefLevel = BeliefLevel5
 
@@ -46,10 +52,28 @@ BeliefLevel = BeliefLevel5
 class Prop:
     name: str
 
+    def __hash__(self):
+        return hash(self.name)
+
+    def __eq__(self, other):
+        return isinstance(other, Prop) and self.name == other.name
+
 @dataclass
 class BeliefProp:
     prop: Prop
     level: BeliefLevel
+
+    def __post_init__(self):
+        if isinstance(self.prop, str):
+            self.prop = Prop(self.prop)
+        if isinstance(self.level, int):
+            self.level = BeliefLevel(self.level)
+
+    def __hash__(self):
+        return hash(self.prop) * hash(self.level)
+
+    def __eq__(self, other):
+        return isinstance(other, BeliefProp) and self.prop == other.prop and self.level == other.level
 
 def ground(b: BeliefProp) -> Prop:
     return b.prop
@@ -74,7 +98,7 @@ class Operator:
 
 def satisfies_single(s: BeliefState, p: Prop):
     for belief_p in s:
-        if ground(belief_p) == p and strength(p) > BeliefLevel.NOTHING:
+        if ground(belief_p) == p and strength(belief_p) > BeliefLevel.NOTHING:
             return True
     return False
 
@@ -193,4 +217,4 @@ class QU_STRIPS:
         assert count == len(self.I)
 
     def check_G(self):
-        assert self.G.is_subset(self.P)
+        assert self.G.issubset(self.P)
