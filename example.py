@@ -9,6 +9,7 @@ from grounding import (
     Lifted_Operator,
     ground_lifted_operator
 )
+from search import bfs_plan
 
 objects = {
     "location": ["A", "B", "C", "D", "E", "F", "H", "J"]
@@ -172,3 +173,5 @@ goal = {
 }
 
 problem = QU_STRIPS(propositions, belief_propositions, initial_state, goal, operators)
+
+plans = bfs_plan(problem)
