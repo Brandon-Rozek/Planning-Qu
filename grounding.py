@@ -92,10 +92,14 @@ def ground_lifted_operator(lo: Lifted_Operator, objects: Dict[str, List[str]]):
             parameters_single[name] = parameter
         parameters_full.append(parameters_single)
 
-
     grounded_operators = set()
 
     for parameters in parameters_full:
+        # Adjust Name
+        name = lo.name
+        for pname in parameter_names:
+            name += "-" + parameters[pname]
+
         # Adjust preconditions
         grounded_pre = set()
         for precondition in lo.pre:
@@ -144,8 +148,7 @@ def ground_lifted_operator(lo: Lifted_Operator, objects: Dict[str, List[str]]):
                 ground_predicate_from_args(l, new_l_args)
             ))
 
+        grounded_operators.add(Operator(name, grounded_pre, grounded_add_p, grounded_add_n))
 
-        grounded_operators.add(Operator(lo.name, grounded_pre, grounded_add_p, grounded_add_n))
-
-        return grounded_operators
+    return grounded_operators
 
