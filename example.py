@@ -1,3 +1,18 @@
+"""
+Example Domain and Problem Encoded
+
+Tuples of location nodes and likelihood
+of trap.
+
+Lists show potential paths
+
+[(A, -2), (B, -1), (E, 1), (J, -2)]
+[(A, -2), (C, 0),  (F, 1), (J, -2)]
+[(A, -2), (D, 1),  (H, 0), (J, -2)]
+[(A, -2), (K, -1), (L, 0), (J, -2)]
+
+"""
+
 from structures import (
     Prop,
     BeliefProp,
@@ -12,15 +27,15 @@ from grounding import (
 from search import bfs_plan
 
 objects = {
-    "location": ["A", "B", "C", "D", "E", "F", "H", "J"]
+    "location": ["A", "B", "C", "D", "E", "F", "H", "J", "K", "L"]
 }
 
 predicates = {
     Pred("at-agent", ["location"]),
     Pred("at-trap", ["location"]),
-    Pred("caught", []),
     Pred("not-caught", []),
-    Pred("CONNECTED", ["location", "location"])
+    Pred("CONNECTED", ["location", "location"]),
+    Pred("true", [])
 }
 
 propositions = set()
@@ -53,7 +68,6 @@ lifted_operators = {
         # Add Positive Beliefs
         {
             (Pred("true", []), Pred("at-agent", ["location"], ["?l2"])),
-            (Pred("at-trap", ["location"], ["?l2"]), Pred("caught", []))
         },
         # Add Negative Beliefs
         {
@@ -81,6 +95,8 @@ initial_state = {
     BeliefProp("at-agent-F", -2),
     BeliefProp("at-agent-H", -2),
     BeliefProp("at-agent-J", -2),
+    BeliefProp("at-agent-K", -2),
+    BeliefProp("at-agent-L", -2),
 
     BeliefProp("at-trap-A", -2),
     BeliefProp("at-trap-B", -1),
@@ -90,14 +106,18 @@ initial_state = {
     BeliefProp("at-trap-F", 1),
     BeliefProp("at-trap-H", 0), # Handle implicitely?
     BeliefProp("at-trap-J", -2),
+    BeliefProp("at-trap-K", -1),
+    BeliefProp("at-trap-L", 0),
 
     BeliefProp("CONNECTED-A-B", 2),
     BeliefProp("CONNECTED-A-C", 2),
     BeliefProp("CONNECTED-A-D", 2),
+    BeliefProp("CONNECTED-A-K", 2),
     BeliefProp("CONNECTED-A-A", -2),
     BeliefProp("CONNECTED-A-E", -2),
     BeliefProp("CONNECTED-A-F", -2),
     BeliefProp("CONNECTED-A-H", -2),
+    BeliefProp("CONNECTED-A-L", -2),
     BeliefProp("CONNECTED-A-J", -2),
 
     BeliefProp("CONNECTED-B-E", 2),
@@ -107,6 +127,8 @@ initial_state = {
     BeliefProp("CONNECTED-B-D", -2),
     BeliefProp("CONNECTED-B-F", -2),
     BeliefProp("CONNECTED-B-H", -2),
+    BeliefProp("CONNECTED-B-K", -2),
+    BeliefProp("CONNECTED-B-L", -2),
     BeliefProp("CONNECTED-B-J", -2),
 
     BeliefProp("CONNECTED-E-J", 2),
@@ -117,6 +139,8 @@ initial_state = {
     BeliefProp("CONNECTED-E-E", -2),
     BeliefProp("CONNECTED-E-F", -2),
     BeliefProp("CONNECTED-E-H", -2),
+    BeliefProp("CONNECTED-E-K", -2),
+    BeliefProp("CONNECTED-E-L", -2),
 
     BeliefProp("CONNECTED-C-F", 2),
     BeliefProp("CONNECTED-C-A", -2),
@@ -126,6 +150,8 @@ initial_state = {
     BeliefProp("CONNECTED-C-E", -2),
     BeliefProp("CONNECTED-C-H", -2),
     BeliefProp("CONNECTED-C-J", -2),
+    BeliefProp("CONNECTED-C-K", -2),
+    BeliefProp("CONNECTED-C-L", -2),
 
     BeliefProp("CONNECTED-F-J", 2),
     BeliefProp("CONNECTED-F-A", -2),
@@ -135,6 +161,8 @@ initial_state = {
     BeliefProp("CONNECTED-F-E", -2),
     BeliefProp("CONNECTED-F-F", -2),
     BeliefProp("CONNECTED-F-H", -2),
+    BeliefProp("CONNECTED-F-K", -2),
+    BeliefProp("CONNECTED-F-L", -2),
 
     BeliefProp("CONNECTED-D-H", 2),
     BeliefProp("CONNECTED-D-A", -2),
@@ -144,6 +172,8 @@ initial_state = {
     BeliefProp("CONNECTED-D-E", -2),
     BeliefProp("CONNECTED-D-F", -2),
     BeliefProp("CONNECTED-D-J", -2),
+    BeliefProp("CONNECTED-D-K", -2),
+    BeliefProp("CONNECTED-D-L", -2),
 
     BeliefProp("CONNECTED-H-J", 2),
     BeliefProp("CONNECTED-H-A", -2),
@@ -153,6 +183,8 @@ initial_state = {
     BeliefProp("CONNECTED-H-E", -2),
     BeliefProp("CONNECTED-H-F", -2),
     BeliefProp("CONNECTED-H-H", -2),
+    BeliefProp("CONNECTED-H-K", -2),
+    BeliefProp("CONNECTED-H-L", -2),
 
     BeliefProp("CONNECTED-J-A", -2),
     BeliefProp("CONNECTED-J-B", -2),
@@ -162,9 +194,33 @@ initial_state = {
     BeliefProp("CONNECTED-J-F", -2),
     BeliefProp("CONNECTED-J-H", -2),
     BeliefProp("CONNECTED-J-J", -2),
+    BeliefProp("CONNECTED-J-K", -2),
+    BeliefProp("CONNECTED-J-L", -2),
 
-    BeliefProp("caught", -2),
-    BeliefProp("not-caught", 2)
+    BeliefProp("CONNECTED-K-L", 2),
+    BeliefProp("CONNECTED-K-A", -2),
+    BeliefProp("CONNECTED-K-B", -2),
+    BeliefProp("CONNECTED-K-C", -2),
+    BeliefProp("CONNECTED-K-D", -2),
+    BeliefProp("CONNECTED-K-E", -2),
+    BeliefProp("CONNECTED-K-F", -2),
+    BeliefProp("CONNECTED-K-H", -2),
+    BeliefProp("CONNECTED-K-J", -2),
+    BeliefProp("CONNECTED-K-K", -2),
+
+    BeliefProp("CONNECTED-L-J", 2),
+    BeliefProp("CONNECTED-L-A", -2),
+    BeliefProp("CONNECTED-L-B", -2),
+    BeliefProp("CONNECTED-L-C", -2),
+    BeliefProp("CONNECTED-L-D", -2),
+    BeliefProp("CONNECTED-L-E", -2),
+    BeliefProp("CONNECTED-L-F", -2),
+    BeliefProp("CONNECTED-L-H", -2),
+    BeliefProp("CONNECTED-L-K", -2),
+    BeliefProp("CONNECTED-L-L", -2),
+
+    BeliefProp("not-caught", 2),
+    BeliefProp("true", 2)
 }
 
 goal = {
@@ -175,3 +231,5 @@ goal = {
 problem = QU_STRIPS(propositions, belief_propositions, initial_state, goal, operators)
 
 plans = bfs_plan(problem)
+
+print(plans)

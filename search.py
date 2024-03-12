@@ -26,7 +26,6 @@ def bfs_plan(problem: QU_STRIPS) -> List[List[Operator]]:
 
     while not node_queue.empty():
         state, plan = node_queue.get()
-        print_plan(plan)
         if satisfies(state, problem.G):
             plans.append(plan)
             continue
@@ -36,7 +35,6 @@ def bfs_plan(problem: QU_STRIPS) -> List[List[Operator]]:
             if not satisfies(state, operator.pre):
                 continue
             next_state = apply(state, operator)
-            # TODO: Make sure next_state is set correctly
             next_plan = deepcopy(plan)
             next_plan.append(operator)
             node_queue.put((next_state, next_plan))
