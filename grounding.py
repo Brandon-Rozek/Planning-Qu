@@ -56,13 +56,15 @@ class Lifted_Operator:
             parameters: Optional[List[Tuple[str, str]]] = None,
             pre: Optional[Set[Pred]] = None,
             add_p: Optional[Set[Tuple[Pred, Pred]]] = None,
-            add_n: Optional[Set[Tuple[Pred, Pred]]] = None
+            add_n: Optional[Set[Tuple[Pred, Pred]]] = None,
+            cost: int = 1
     ):
         self.name = name
         self.parameters = parameters
         self.pre = pre if pre is not None else set()
         self.add_p = add_p if add_p is not None else set()
         self.add_n = add_n if add_n is not None else set()
+        self.cost = cost
 
 def ground_lifted_operator(lo: Lifted_Operator, objects: Dict[str, List[str]]):
     # Get type information out of parameters
@@ -148,7 +150,7 @@ def ground_lifted_operator(lo: Lifted_Operator, objects: Dict[str, List[str]]):
                 ground_predicate_from_args(l, new_l_args)
             ))
 
-        grounded_operators.add(Operator(name, grounded_pre, grounded_add_p, grounded_add_n))
+        grounded_operators.add(Operator(name, grounded_pre, grounded_add_p, grounded_add_n, lo.cost))
 
     return grounded_operators
 

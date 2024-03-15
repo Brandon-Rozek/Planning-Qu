@@ -88,12 +88,14 @@ class Operator:
     def __init__(
             self, name: str, pre: Optional[Set[Prop]] = None,
             add_p: Optional[Set[Tuple[Prop, Prop]]] = None,
-            add_n: Optional[Set[Tuple[Prop, Prop]]] = None
+            add_n: Optional[Set[Tuple[Prop, Prop]]] = None,
+            cost: int = 1
     ):
         self.name = name
         self.pre = pre if pre is not None else set()
         self.add_p = add_p if add_p is not None else set()
         self.add_n = add_n if add_n is not None else set()
+        self.cost = cost
 
 
 def satisfies_single(s: BeliefState, p: Prop):
