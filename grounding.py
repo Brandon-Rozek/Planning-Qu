@@ -5,9 +5,9 @@ the actions and predicates.
 from itertools import product
 from typing import Dict, List, Optional, Set, Tuple
 
-from structures import Prop, Operator
+from structures import Prop, BeliefOperator
 
-__all__ = ['Pred', 'ground_predicate', 'Lifted_Operator', 'ground_lifted_operator']
+__all__ = ['Pred', 'ground_predicate', 'Lifted_Belief_Operator', 'ground_lifted_operator']
 
 
 class Pred:
@@ -49,7 +49,7 @@ def ground_predicate(p: Pred, o: Dict[str, List[str]]):
     return propositions
 
 
-class Lifted_Operator:
+class Lifted_Belief_Operator:
     def __init__(
             self, name: str,
             # parameters : [(name, type), ...]
@@ -66,7 +66,7 @@ class Lifted_Operator:
         self.add_n = add_n if add_n is not None else set()
         self.cost = cost
 
-def ground_lifted_operator(lo: Lifted_Operator, objects: Dict[str, List[str]]):
+def ground_lifted_operator(lo: Lifted_Belief_Operator, objects: Dict[str, List[str]]):
     # Get type information out of parameters
     types = []
     for p in lo.parameters:
@@ -150,7 +150,7 @@ def ground_lifted_operator(lo: Lifted_Operator, objects: Dict[str, List[str]]):
                 ground_predicate_from_args(l, new_l_args)
             ))
 
-        grounded_operators.add(Operator(name, grounded_pre, grounded_add_p, grounded_add_n, lo.cost))
+        grounded_operators.add(BeliefOperator(name, grounded_pre, grounded_add_p, grounded_add_n, lo.cost))
 
     return grounded_operators
 

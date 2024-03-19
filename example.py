@@ -12,19 +12,24 @@ Lists show potential paths
 [(A, -2), (K, -1), (L, 0), (J, -2)]
 
 """
-
+from compile import (
+    compile_qu_strips,
+    print_strips_plan,
+    bfs_strips_plan
+)
 from structures import (
     Prop,
     BeliefProp,
     QU_STRIPS,
-    BeliefLevel
+    BeliefLevel,
+    BeliefLevel5
 )
 from grounding import (
     ground_predicate, Pred,
-    Lifted_Operator,
+    Lifted_Belief_Operator,
     ground_lifted_operator
 )
-from search import bfs_plan
+from search import bfs_plan, print_plan
 
 objects = {
     "location": ["A", "B", "C", "D", "E", "F", "H", "J", "K", "L"]
@@ -42,10 +47,8 @@ propositions = set()
 
 # Populate propositions using grounding
 for p in predicates:
-    new_props = ground_predicate(p, objects)
-    for np in new_props:
-        propositions.add(np)
-
+    new_props = set(ground_predicate(p, objects))
+    propositions |= new_props
 
 # Construct P_Sigma
 belief_propositions = set()
@@ -57,7 +60,7 @@ for p in propositions:
 # Operators
 
 lifted_operators = {
-    Lifted_Operator("move-agent",
+    Lifted_Belief_Operator("move-agent",
         # Parameters
         [("?l1", "location"), ("?l2", "location")],
         # Preconditions
@@ -228,8 +231,13 @@ goal = {
      Prop("not-caught")
 }
 
-problem = QU_STRIPS(propositions, belief_propositions, initial_state, goal, operators)
-
+problem = QU_STRIPS(BeliefLevel5, propositions, belief_propositions, initial_state, goal, operators)
 plans = bfs_plan(problem)
+for plan in plans:
+    print_plan(plan)
 
-print(plans)
+
+strips_problem = compile_qu_strips(problem)
+strips_plans = bfs_strips_plan(strips_problem)
+for plan in strips_plans:
+    print_strips_plan(plan)

@@ -6,11 +6,11 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import total_ordering
 from itertools import chain, product
-from typing import Set, Optional, Tuple
+from typing import Set, Optional, Tuple, Type
 
 __all__ = [
     'Prop', 'BeliefProp',
-    'Operator', 'satisfies',
+    'BeliefOperator', 'satisfies',
     'apply', 'check_consistent',
     'check_proper', 'QU_STRIPS'
 ]
@@ -39,6 +39,10 @@ class BeliefLevel5(Enum):
             BeliefLevel5.CERTAINLY: BeliefLevel5.CERTAINLY_NOT
         }[self]
 
+    @staticmethod
+    def positives():
+        return (p for p in iter(BeliefLevel5) if p > BeliefLevel5.NOTHING)
+
     def __hash__(self):
         return self.value
 
@@ -64,6 +68,7 @@ class BeliefProp:
     level: BeliefLevel
 
     def __post_init__(self):
+        assert isinstance(self.prop, (Prop, str)), f"{self.prop} is not of type Prop or str"
         if isinstance(self.prop, str):
             self.prop = Prop(self.prop)
         if isinstance(self.level, int):
@@ -84,7 +89,7 @@ def strength(b: BeliefProp) -> BeliefLevel:
 BeliefState = Set[BeliefProp]
 
 
-class Operator:
+class BeliefOperator:
     def __init__(
             self, name: str, pre: Optional[Set[Prop]] = None,
             add_p: Optional[Set[Tuple[Prop, Prop]]] = None,
@@ -107,7 +112,7 @@ def satisfies_single(s: BeliefState, p: Prop):
 def satisfies(s: BeliefState, requirements: Set[Prop]):
     return all((satisfies_single(s, p) for p in requirements))
 
-def compute_belief_p(l: Prop, s: BeliefState, conds: Set[BeliefProp]) -> BeliefLevel:
+def compute_belief_p(l: Prop, s: BeliefState, conds: Set[Prop]) -> BeliefLevel:
     # First compute based on the weakest link principle
     cond_strengths = { strength(si) for si in s if ground(si) in conds }
     sigma_1 = min(cond_strengths)
@@ -117,7 +122,7 @@ def compute_belief_p(l: Prop, s: BeliefState, conds: Set[BeliefProp]) -> BeliefL
 
     return max(sigma_1, sigma_2)
 
-def compute_belief_n(l: Prop, s: BeliefState, conds: Set[BeliefProp]):
+def compute_belief_n(l: Prop, s: BeliefState, conds: Set[Prop]):
     # First compute based on the weakest link principle
     cond_strengths = { strength(si) for si in s if ground(si) in conds }
     sigma_1 = min(cond_strengths).inverse()
@@ -127,7 +132,7 @@ def compute_belief_n(l: Prop, s: BeliefState, conds: Set[BeliefProp]):
 
     return min(sigma_1, sigma_2)
 
-def apply(s: BeliefState, o: Operator) -> BeliefState:
+def apply(s: BeliefState, o: BeliefOperator) -> BeliefState:
     # NOTE: Assumes that o is applicable at state s
 
     add_p_prime = set()
@@ -158,7 +163,7 @@ def check_consistent(s: BeliefState) -> bool:
                 return False
     return True
 
-def check_proper(o: Operator) -> bool:
+def check_proper(o: BeliefOperator) -> bool:
     # Condition 1
     for ((c1, l1), (c2, l2)) in product(o.add_p, o.add_p):
         if (c1, l1) != (c2, l2):
@@ -182,17 +187,19 @@ def check_proper(o: Operator) -> bool:
 class QU_STRIPS:
     def __init__(
             self,
+            B_i: Type[BeliefLevel],
             P: Optional[Set[Prop]] = None,
             P_sigma: Optional[Set[BeliefProp]] = None,
             I: Optional[BeliefState] = None,
             G: Optional[Set[Prop]] = None,
-            O: Optional[Set[Operator]] = None
+            O: Optional[Set[BeliefOperator]] = None,
     ):
         self.P = P if P is not None else set()
         self.P_sigma = P_sigma if P_sigma is not None else set()
         self.I = I if I is not None else set()
         self.G = G if G is not None else set()
         self.O = O if O is not None else set()
+        self.B_i = B_i
 
         self.check_P_sigma()
         self.check_I()
@@ -202,7 +209,7 @@ class QU_STRIPS:
         count = 0
         for p in self.P:
             for sigma in list(BeliefLevel):
-                assert BeliefProp(p, sigma) in self.P_sigma
+                assert BeliefProp(p, sigma) in self.P_sigma, f"B({p}, {sigma}) not in P_sigma"
                 count += 1
         assert count == len(self.P_sigma)
 
@@ -213,6 +220,7 @@ class QU_STRIPS:
         for p in self.P:
             # Find belief level that's in I
             sigma = next((s for s in list(BeliefLevel) if BeliefProp(p, s) in self.I), None)
+            # TODO: Assume a belief level of zero and print out a notice
             assert sigma is not None, f"Formula {p} does not have an associated belief level in I."
             count += 1
 

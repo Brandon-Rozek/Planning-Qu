@@ -9,24 +9,23 @@ from queue import PriorityQueue
 
 from structures import (
     QU_STRIPS,
-    Operator,
+    BeliefOperator,
     BeliefState,
     satisfies,
     apply
 )
 
-def print_plan(plan: List[Operator]):
-    print("Current Plan:")
+def print_plan(plan: List[BeliefOperator]):
     for o in plan:
         print(o.name)
 
 @dataclass(order=True)
 class PrioritizedItem:
     priority: int
-    item: Tuple[BeliefState, List[Operator]]=field(compare=False)
+    item: Tuple[BeliefState, List[BeliefOperator]]=field(compare=False)
 
 
-def bfs_plan(problem: QU_STRIPS) -> List[List[Operator]]:
+def bfs_plan(problem: QU_STRIPS) -> List[List[BeliefOperator]]:
     node_queue = PriorityQueue() # (state, plan from initial state)
     node_queue.put(PrioritizedItem(0, (problem.I, [])))
 
