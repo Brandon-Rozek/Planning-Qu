@@ -232,12 +232,17 @@ goal = {
 }
 
 problem = QU_STRIPS(BeliefLevel5, propositions, belief_propositions, initial_state, goal, operators)
+
+print("Searching for plan within QU_STRIPS")
 plans = bfs_plan(problem)
 for plan in plans:
     print_plan(plan)
 
 
+print("Compiling QU_STRIPS to STRIPS")
 strips_problem = compile_qu_strips(problem)
+
+print("Searching for plan with STRIPS")
 strips_plans = bfs_strips_plan(strips_problem)
 for plan in strips_plans:
     print_strips_plan(plan)

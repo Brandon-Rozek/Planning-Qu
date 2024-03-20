@@ -4,7 +4,8 @@ from structures import (
     compute_belief_n,
     compute_belief_p,
     BeliefLevel5,
-    BeliefLevel
+    BeliefLevel,
+    ground
 )
 from itertools import product, chain
 from dataclasses import field, dataclass
@@ -40,7 +41,11 @@ class STRIPS_Problem:
         self.I = I if I is not None else set()
         self.G = G if G is not None else set()
 
-X = str
+X_P = str
+
+def X_P(p_sigma: BeliefProp) -> Prop:
+    assert isinstance(p_sigma, BeliefProp)
+    return Prop(p_sigma.prop.name + "_" + str(p_sigma.level.value))
 
 def compute_O_G_Prime(Pi: QU_STRIPS) -> Set[STRIPS_Operator]:
     """
@@ -64,9 +69,9 @@ def compute_O_G_Prime(Pi: QU_STRIPS) -> Set[STRIPS_Operator]:
         # Create the precondition set
         for i, sigma_p in enumerate(goals_at_belief):
             p_sigma = goals[i]
-            pre.add(X(BeliefProp(p_sigma, sigma_p)))
+            pre.add(X_P(BeliefProp(p_sigma, sigma_p)))
 
-        O_G_Prime.add(STRIPS_Operator(name, pre, {Prop("goal")}, {}, 0))
+        O_G_Prime.add(STRIPS_Operator(name, pre, {Prop("goal"),}, set(), 0))
 
     return O_G_Prime
 
@@ -112,12 +117,18 @@ def compute_O_A_Prime(Pi: QU_STRIPS) -> Set[STRIPS_Operator]:
 
             name = o.name + "_" + str(hash(iter(S_sigma)))
 
-            pre = { X(p_sigma) for p_sigma in S_sigma }
+            pre = { X_P(p_sigma) for p_sigma in S_sigma }
 
             # Iterate through add_p(o)
             # and add translated belief
             # propositions if conditional effect
             # fires for this fixed set.
+
+            # NOTE: I need to rename this more properly and make sure
+            # that the theory captures this.
+            # This set is the set of belief propositions that are in the add set
+            HACK = set()
+
             add_p = set()
             for (c, l) in o.add_p:
                 # Find belief B(c, sigma_c) in S_sigma
@@ -134,7 +145,8 @@ def compute_O_A_Prime(Pi: QU_STRIPS) -> Set[STRIPS_Operator]:
 
                 # Compute new Belief Level and add to add_p
                 sigma_l = compute_belief_p(l, S_sigma, o.pre | {c})
-                add_p.add(X(BeliefProp(l, sigma_l)))
+                add_p.add(X_P(BeliefProp(l, sigma_l)))
+                HACK.add(BeliefProp(l, sigma_l))
 
             # Similarly for add_n(o)
             add_n = set()
@@ -153,25 +165,34 @@ def compute_O_A_Prime(Pi: QU_STRIPS) -> Set[STRIPS_Operator]:
 
                 # Compute new Belief Level and add to add_n
                 sigma_l = compute_belief_n(l, S_sigma, o.pre | {c})
-                add_n.add(X(BeliefProp(l, sigma_l)))
+                add_n.add(X_P(BeliefProp(l, sigma_l)))
+                HACK.add(BeliefProp(l, sigma_l))
 
             add_set = add_p | add_n
 
             del_set = set()
-            for (_, l) in chain(o.add_p, o.add_n):
-                for sigma_l in iter(Pi.B_i):
-                    p = X(BeliefProp(l, sigma_l))
-                    if p not in add_set:
-                        del_set.add(p)
+            for p_sigma in HACK:
+                for sigma in iter(Pi.B_i):
+                    p_sigma2 = BeliefProp(ground(p_sigma), sigma)
+                    if p_sigma != p_sigma2:
+                        del_set.add(X_P(p_sigma2))
+
+            # NOTE: The following doesn't work because facts get deleted even
+            # when conditional effects do not fire.
+            # for (_, l) in chain(o.add_p, o.add_n):
+            #     for sigma_l in iter(Pi.B_i):
+            #         p = X_P(BeliefProp(l, sigma_l))
+            #         if p not in add_set:
+            #             del_set.add(p)
 
             O_A_Prime.add(STRIPS_Operator(name, pre, add_set, del_set, o.cost))
 
     return O_A_Prime
 
 def compile_qu_strips(Pi: QU_STRIPS) -> STRIPS_Problem:
-    P_Prime = { Prop(X(p_sigma)) for p_sigma in Pi.P_sigma}
+    P_Prime = { X_P(p_sigma) for p_sigma in Pi.P_sigma}
     O_Prime = compute_O_G_Prime(Pi) | compute_O_A_Prime(Pi)
-    I_Prime = { Prop(X(p)) for p in Pi.I}
+    I_Prime = { X_P(p) for p in Pi.I}
     G_Prime = { Prop("goal")}
     return STRIPS_Problem(P_Prime, O_Prime, I_Prime, G_Prime)
 
@@ -204,7 +225,11 @@ def bfs_strips_plan(problem: STRIPS_Problem) -> List[List[BeliefOperator]]:
 
     while not node_queue.empty():
         state, plan = node_queue.get().item
+        # print("Current plan")
+        # for o in plan:
+        #     print(o.name)
         if strips_satisfies(state, problem.G):
+            # print("Goal reached")
             plans.append(plan)
             continue
 
@@ -215,7 +240,7 @@ def bfs_strips_plan(problem: STRIPS_Problem) -> List[List[BeliefOperator]]:
             next_state = strips_apply(state, operator)
             next_plan = deepcopy(plan)
             next_plan.append(operator)
-            next_plan_cost = sum(o.cost for o in next_plan)
+            next_plan_cost = sum(o.C for o in next_plan)
             node_queue.put(PrioritizedSTRIPSItem(next_plan_cost, (next_state, next_plan)))
 
     return plans
