@@ -12,6 +12,12 @@ Lists show potential paths
 [(A, -2), (K, -1), (L, 0), (J, -2)]
 
 """
+from pddl.formatter import domain_to_string, problem_to_string
+
+from pddlgen import (
+    generate_pddl_domain,
+    generate_pddl_problem
+)
 from compile import (
     compile_qu_strips,
     print_strips_plan,
@@ -238,7 +244,6 @@ plans = bfs_plan(problem)
 for plan in plans:
     print_plan(plan)
 
-
 print("Compiling QU_STRIPS to STRIPS")
 strips_problem = compile_qu_strips(problem)
 
@@ -246,3 +251,21 @@ print("Searching for plan with STRIPS")
 strips_plans = bfs_strips_plan(strips_problem)
 for plan in strips_plans:
     print_strips_plan(plan)
+
+print("Generating PDDL Domain")
+strips_pddl_domain = generate_pddl_domain(
+    "escape",
+    strips_problem
+)
+with open('compiled-domain.pddl', 'w') as file:
+    file.write(domain_to_string(strips_pddl_domain))
+
+
+print("Generating PDDL Problem")
+strips_pddl_problem = generate_pddl_problem(
+    "escape-instance",
+    strips_problem,
+    strips_pddl_domain
+)
+with open('compiled-problem.pddl', 'w') as file:
+    file.write(problem_to_string(strips_pddl_problem))
