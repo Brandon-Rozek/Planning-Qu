@@ -84,7 +84,7 @@ def compute_O_G_Prime(Pi: QU_STRIPS) -> Set[STRIPS_Operator]:
 def compute_O_A_Prime(Pi: QU_STRIPS, static_optimization: bool = True) -> Set[STRIPS_Operator]:
     static_belief_predicates = set()
     if static_optimization:
-        static_belief_predicates = compute_static_belief_predicates(Pi)
+        static_belief_predicates = Pi.static_belief_predicates
 
     O_A_Prime = set()
 
@@ -156,12 +156,6 @@ def compute_O_A_Prime(Pi: QU_STRIPS, static_optimization: bool = True) -> Set[ST
             # and add translated belief
             # propositions if conditional effect
             # fires for this fixed set.
-
-            # NOTE: I need to rename this more properly and make sure
-            # that the theory captures this.
-            # This set is the set of belief propositions that are in the add set
-            HACK = set()
-
             add_p = set()
             for (c, l) in o.add_p:
                 # Find belief B(c, sigma_c) in S_sigma
@@ -179,7 +173,6 @@ def compute_O_A_Prime(Pi: QU_STRIPS, static_optimization: bool = True) -> Set[ST
                 # Compute new Belief Level and add to add_p
                 sigma_l = compute_belief_p(l, S_sigma, o.pre | {c})
                 add_p.add(X_P(BeliefProp(l, sigma_l)))
-                HACK.add(BeliefProp(l, sigma_l))
 
             # Similarly for add_n(o)
             add_n = set()
@@ -199,49 +192,51 @@ def compute_O_A_Prime(Pi: QU_STRIPS, static_optimization: bool = True) -> Set[ST
                 # Compute new Belief Level and add to add_n
                 sigma_l = compute_belief_n(l, S_sigma, o.pre | {c})
                 add_n.add(X_P(BeliefProp(l, sigma_l)))
-                HACK.add(BeliefProp(l, sigma_l))
 
             add_set = add_p | add_n
 
             del_set = set()
-            for p_sigma in HACK:
-                for sigma in iter(Pi.B_i):
-                    p_sigma2 = BeliefProp(ground(p_sigma), sigma)
-                    if p_sigma != p_sigma2:
-                        del_set.add(X_P(p_sigma2))
-
-            # NOTE: The following doesn't work because facts get deleted even
-            # when conditional effects do not fire.
-            # for (_, l) in chain(o.add_p, o.add_n):
-            #     for sigma_l in iter(Pi.B_i):
-            #         p = X_P(BeliefProp(l, sigma_l))
-            #         if p not in add_set:
-            #             del_set.add(p)
+            for (c, l) in chain(o.add_p, o.add_n):
+                # Make sure condition effect fires
+                # for this compiled operator
+                effect_fires = False
+                for p_sigma in S_sigma:
+                    if ground(p_sigma) == c and strength(p_sigma) > BeliefLevel.NOTHING:
+                        effect_fires = True
+                        break
+                if effect_fires:
+                    for sigma_l in iter(Pi.B_i):
+                        p = X_P(BeliefProp(l, sigma_l))
+                        if p not in add_set:
+                            del_set.add(p)
 
             O_A_Prime.add(STRIPS_Operator(name, pre, add_set, del_set, o.cost))
 
     return O_A_Prime
 
+def compute_p_prime(Pi: QU_STRIPS, static_optimization: bool = True) -> Set[Prop]:
+    if not static_optimization:
+        return { X_P(p_sigma) for p_sigma in Pi.P_sigma} | {Prop("goal")}
 
-# TODO: Rename method name
-def compute_static_belief_predicates(Pi: QU_STRIPS) -> Set[BeliefProp]:
-    candidate_belief_predicates = deepcopy(Pi.I)
-    for o in Pi.O:
-        for (_, l) in chain(o.add_p, o.add_n):
-            # Attempt to find a belief of l in the inital state
-            l_sigma = None
-            for p_sigma in candidate_belief_predicates:
-                if ground(p_sigma) == l:
-                    l_sigma = p_sigma
-                    break
-            # If found, remove it as a candidate
-            if l_sigma is not None:
-                candidate_belief_predicates -= {l_sigma}
-    return candidate_belief_predicates
+    P_Prime = set()
+    for p in Pi.P:
+        p_sigma = None
+        for s_sigma in Pi.static_belief_predicates:
+            if ground(s_sigma) == p:
+                p_sigma = s_sigma
+                break
+        if p_sigma is not None:
+            P_Prime.add(X_P(p_sigma))
+        else:
+            for sigma in BeliefLevel:
+                P_Prime.add(X_P(BeliefProp(p, sigma)))
+
+    P_Prime.add(Prop("goal"))
+    return P_Prime
 
 
 def compile_qu_strips(Pi: QU_STRIPS, static_optimization: bool = True) -> STRIPS_Problem:
-    P_Prime = { X_P(p_sigma) for p_sigma in Pi.P_sigma} | {Prop("goal")}
+    P_Prime = compute_p_prime(Pi, static_optimization)
     O_Prime = compute_O_G_Prime(Pi) | compute_O_A_Prime(Pi, static_optimization)
     I_Prime = { X_P(p) for p in Pi.I}
     G_Prime = { Prop("goal")}
