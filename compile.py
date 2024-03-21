@@ -241,7 +241,7 @@ def compute_static_belief_predicates(Pi: QU_STRIPS) -> Set[BeliefProp]:
 
 
 def compile_qu_strips(Pi: QU_STRIPS, static_optimization: bool = True) -> STRIPS_Problem:
-    P_Prime = { X_P(p_sigma) for p_sigma in Pi.P_sigma}
+    P_Prime = { X_P(p_sigma) for p_sigma in Pi.P_sigma} | {Prop("goal")}
     O_Prime = compute_O_G_Prime(Pi) | compute_O_A_Prime(Pi, static_optimization)
     I_Prime = { X_P(p) for p in Pi.I}
     G_Prime = { Prop("goal")}
