@@ -43,10 +43,10 @@ objects = {
 
 predicates = {
     Pred("at-agent", ["location"]),
-    Pred("at-trap", ["location"]),
+    Pred("AT-TRAP", ["location"]),
     Pred("not-caught", []),
     Pred("CONNECTED", ["location", "location"]),
-    Pred("true", [])
+    Pred("TRUE", [])
 }
 
 propositions = set()
@@ -76,12 +76,12 @@ lifted_operators = {
         },
         # Add Positive Beliefs
         {
-            (Pred("true", []), Pred("at-agent", ["location"], ["?l2"])),
+            (Pred("TRUE", []), Pred("at-agent", ["location"], ["?l2"])),
         },
         # Add Negative Beliefs
         {
-            (Pred("true", []), Pred("at-agent", ['location'], ['?l1'])),
-            (Pred("at-trap", ["location"], ["?l2"]), Pred("not-caught", []))
+            (Pred("TRUE", []), Pred("at-agent", ['location'], ['?l1'])),
+            (Pred("AT-TRAP", ["location"], ["?l2"]), Pred("not-caught", []))
         }
     )
 }
@@ -107,16 +107,16 @@ initial_state = {
     BeliefProp("at-agent-K", -2),
     BeliefProp("at-agent-L", -2),
 
-    BeliefProp("at-trap-A", -2),
-    BeliefProp("at-trap-B", -1),
-    BeliefProp("at-trap-C", 0), # Handle implicitely?
-    BeliefProp("at-trap-D", 1),
-    BeliefProp("at-trap-E", 1),
-    BeliefProp("at-trap-F", 1),
-    BeliefProp("at-trap-H", 0), # Handle implicitely?
-    BeliefProp("at-trap-J", -2),
-    BeliefProp("at-trap-K", -1),
-    BeliefProp("at-trap-L", 0),
+    BeliefProp("AT-TRAP-A", -2),
+    BeliefProp("AT-TRAP-B", -1),
+    BeliefProp("AT-TRAP-C", 0), # Handle implicitely?
+    BeliefProp("AT-TRAP-D", 1),
+    BeliefProp("AT-TRAP-E", 1),
+    BeliefProp("AT-TRAP-F", 1),
+    BeliefProp("AT-TRAP-H", 0), # Handle implicitely?
+    BeliefProp("AT-TRAP-J", -2),
+    BeliefProp("AT-TRAP-K", -1),
+    BeliefProp("AT-TRAP-L", 0),
 
     BeliefProp("CONNECTED-A-B", 2),
     BeliefProp("CONNECTED-A-C", 2),
@@ -229,7 +229,7 @@ initial_state = {
     BeliefProp("CONNECTED-L-L", -2),
 
     BeliefProp("not-caught", 2),
-    BeliefProp("true", 2)
+    BeliefProp("TRUE", 2)
 }
 
 goal = {
