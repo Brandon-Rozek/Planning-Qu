@@ -1,10 +1,11 @@
 """
-Structures used to capture planning
-domain and problems.
+Structures used to capture QU_STRIPS
+planning domain and problems.
 """
+from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
-from functools import total_ordering
+from functools import total_ordering, cached_property
 from itertools import chain, product
 from typing import Set, Optional, Tuple, Type
 
@@ -193,6 +194,8 @@ class QU_STRIPS:
             I: Optional[BeliefState] = None,
             G: Optional[Set[Prop]] = None,
             O: Optional[Set[BeliefOperator]] = None,
+            static_optimization: bool = True,
+            perform_checks: bool = True
     ):
         self.P = P if P is not None else set()
         self.P_sigma = P_sigma if P_sigma is not None else set()
@@ -201,9 +204,13 @@ class QU_STRIPS:
         self.O = O if O is not None else set()
         self.B_i = B_i
 
-        self.check_P_sigma()
-        self.check_I()
-        self.check_G()
+        if perform_checks:
+            self.check_P_sigma()
+            self.check_I()
+            self.check_G()
+
+        if static_optimization:
+            self.reduce_belief_operators()
 
     def check_P_sigma(self):
         count = 0
@@ -228,3 +235,40 @@ class QU_STRIPS:
 
     def check_G(self):
         assert self.G.issubset(self.P)
+
+    @cached_property
+    def static_belief_predicates(self) -> Set[BeliefProp]:
+        candidate_belief_predicates = deepcopy(self.I)
+        for o in self.O:
+            for (_, l) in chain(o.add_p, o.add_n):
+                # Attempt to find a belief of l in the inital state
+                l_sigma = None
+                for p_sigma in candidate_belief_predicates:
+                    if ground(p_sigma) == l:
+                        l_sigma = p_sigma
+                        break
+                # If found, remove it as a candidate
+                if l_sigma is not None:
+                    candidate_belief_predicates -= {l_sigma}
+        return candidate_belief_predicates
+
+    def reduce_belief_operators(self):
+        """
+        Takes a QU_STRIPS problem and attempts
+        to reduce the number of operators by seeing
+        if it can be satisfied given the
+        identified static predicates.
+        """
+        result_operators = set()
+        for o in self.O:
+            discard_operator = False
+            for p in o.pre:
+                for sp in self.static_belief_predicates:
+                    if ground(sp) == p and strength(sp) < BeliefLevel.NOTHING:
+                        discard_operator = True
+                        break
+
+            if not discard_operator:
+                result_operators.add(o)
+
+        self.O = result_operators

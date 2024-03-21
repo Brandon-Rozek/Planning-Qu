@@ -1,11 +1,13 @@
 """
-Takes a lifted represented and grounds
-the actions and predicates.
+Takes a lifted represented of QU_STRIPS
+and grounds the actions and predicates.
 """
 from itertools import product
 from typing import Dict, List, Optional, Set, Tuple
 
-from structures import Prop, BeliefOperator
+from structures import (
+    Prop, BeliefOperator
+)
 
 __all__ = ['Pred', 'ground_predicate', 'Lifted_Belief_Operator', 'ground_lifted_operator']
 
@@ -66,6 +68,68 @@ class Lifted_Belief_Operator:
         self.add_n = add_n if add_n is not None else set()
         self.cost = cost
 
+def instantiate_lifted_operator(lo: Lifted_Belief_Operator, parameters: Dict[str, str]):
+    # Parameter names
+    parameter_names = []
+    for p in lo.parameters:
+        parameter_names.append(p[0])
+
+    # Adjust Name
+    name = lo.name
+    for pname in parameter_names:
+        name += "-" + parameters[pname]
+
+    # Adjust preconditions
+    grounded_pre = set()
+    for precondition in lo.pre:
+        assert len(precondition.arg_names) == len(precondition.signature), "Predicate signature not the same arity as bounded arguments"
+        new_args = []
+        for arg_name in precondition.arg_names:
+            new_arg_name = parameters[arg_name] if arg_name in parameters else arg_name
+            new_args.append(new_arg_name)
+
+        # Constructed grounded precondition
+        grounded_pre.add(ground_predicate_from_args(precondition, new_args))
+
+    # Adjust add_p
+    grounded_add_p = set()
+    for c, l in lo.add_p:
+        assert len(c.arg_names) == len(c.signature)
+        assert len(l.arg_names) == len(l.signature)
+        new_c_args = []
+        for arg_name in c.arg_names:
+            new_arg_name = parameters[arg_name] if arg_name in parameters else arg_name
+            new_c_args.append(new_arg_name)
+        new_l_args = []
+        for arg_name in l.arg_names:
+            new_arg_name = parameters[arg_name] if arg_name in parameters else arg_name
+            new_l_args.append(new_arg_name)
+        grounded_add_p.add((
+            ground_predicate_from_args(c, new_c_args),
+            ground_predicate_from_args(l, new_l_args)
+        ))
+
+    # Adjust add_n
+    grounded_add_n = set()
+    for c, l in lo.add_n:
+        assert len(c.arg_names) == len(c.signature)
+        assert len(l.arg_names) == len(l.signature)
+        new_c_args = []
+        for arg_name in c.arg_names:
+            new_arg_name = parameters[arg_name] if arg_name in parameters else arg_name
+            new_c_args.append(new_arg_name)
+        new_l_args = []
+        for arg_name in l.arg_names:
+            new_arg_name = parameters[arg_name] if arg_name in parameters else arg_name
+            new_l_args.append(new_arg_name)
+        grounded_add_n.add((
+            ground_predicate_from_args(c, new_c_args),
+            ground_predicate_from_args(l, new_l_args)
+        ))
+
+    return BeliefOperator(name, grounded_pre, grounded_add_p, grounded_add_n, lo.cost)
+
+
 def ground_lifted_operator(lo: Lifted_Belief_Operator, objects: Dict[str, List[str]]):
     # Get type information out of parameters
     types = []
@@ -97,60 +161,7 @@ def ground_lifted_operator(lo: Lifted_Belief_Operator, objects: Dict[str, List[s
     grounded_operators = set()
 
     for parameters in parameters_full:
-        # Adjust Name
-        name = lo.name
-        for pname in parameter_names:
-            name += "-" + parameters[pname]
-
-        # Adjust preconditions
-        grounded_pre = set()
-        for precondition in lo.pre:
-            assert len(precondition.arg_names) == len(precondition.signature), "Predicate signature not the same arity as bounded arguments"
-            new_args = []
-            for arg_name in precondition.arg_names:
-                new_arg_name = parameters[arg_name] if arg_name in parameters else arg_name
-                new_args.append(new_arg_name)
-
-            # Constructed grounded precondition
-            grounded_pre.add(ground_predicate_from_args(precondition, new_args))
-
-        # Adjust add_p
-        grounded_add_p = set()
-        for c, l in lo.add_p:
-            assert len(c.arg_names) == len(c.signature)
-            assert len(l.arg_names) == len(l.signature)
-            new_c_args = []
-            for arg_name in c.arg_names:
-                new_arg_name = parameters[arg_name] if arg_name in parameters else arg_name
-                new_c_args.append(new_arg_name)
-            new_l_args = []
-            for arg_name in l.arg_names:
-                new_arg_name = parameters[arg_name] if arg_name in parameters else arg_name
-                new_l_args.append(new_arg_name)
-            grounded_add_p.add((
-                ground_predicate_from_args(c, new_c_args),
-                ground_predicate_from_args(l, new_l_args)
-            ))
-
-        # Adjust add_n
-        grounded_add_n = set()
-        for c, l in lo.add_n:
-            assert len(c.arg_names) == len(c.signature)
-            assert len(l.arg_names) == len(l.signature)
-            new_c_args = []
-            for arg_name in c.arg_names:
-                new_arg_name = parameters[arg_name] if arg_name in parameters else arg_name
-                new_c_args.append(new_arg_name)
-            new_l_args = []
-            for arg_name in l.arg_names:
-                new_arg_name = parameters[arg_name] if arg_name in parameters else arg_name
-                new_l_args.append(new_arg_name)
-            grounded_add_n.add((
-                ground_predicate_from_args(c, new_c_args),
-                ground_predicate_from_args(l, new_l_args)
-            ))
-
-        grounded_operators.add(BeliefOperator(name, grounded_pre, grounded_add_p, grounded_add_n, lo.cost))
+        grounded_operators.add(instantiate_lifted_operator(lo, parameters))
 
     return grounded_operators
 

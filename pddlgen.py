@@ -3,9 +3,8 @@ Takes a compiled STRIPS domain
 and generates the PDDL
 domain and problem files
 """
-from pddl.logic import Predicate, variables
+from pddl.logic import Predicate
 from pddl.core import Domain, Problem, Action, Requirements
-from pddl.formatter import domain_to_string, problem_to_string
 
 from compile import STRIPS_Problem
 
