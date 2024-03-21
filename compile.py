@@ -1,9 +1,13 @@
+"""
+Takes a QU_STRIPS problem and
+compiles it to a STRIPS problem
+"""
+
 from structures import (
     Prop, QU_STRIPS, BeliefOperator,
     BeliefProp,
     compute_belief_n,
     compute_belief_p,
-    BeliefLevel5,
     BeliefLevel,
     ground
 )
@@ -199,6 +203,7 @@ def compile_qu_strips(Pi: QU_STRIPS) -> STRIPS_Problem:
 
 ###
 ## STRIPS Search Code
+## Only used for debug purposes
 ###
 
 @dataclass(order=True)
