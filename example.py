@@ -247,7 +247,7 @@ for plan in plans:
 print("Compiling QU_STRIPS to STRIPS")
 strips_problem = compile_qu_strips(problem)
 
-print("Searching for plan with STRIPS")
+print("Searching for plan within STRIPS")
 strips_plans = bfs_strips_plan(strips_problem)
 for plan in strips_plans:
     print_strips_plan(plan)

@@ -9,7 +9,8 @@ from structures import (
     compute_belief_n,
     compute_belief_p,
     BeliefLevel,
-    ground
+    ground,
+    strength
 )
 from itertools import product, chain
 from dataclasses import field, dataclass
@@ -80,7 +81,11 @@ def compute_O_G_Prime(Pi: QU_STRIPS) -> Set[STRIPS_Operator]:
     return O_G_Prime
 
 
-def compute_O_A_Prime(Pi: QU_STRIPS) -> Set[STRIPS_Operator]:
+def compute_O_A_Prime(Pi: QU_STRIPS, static_optimization: bool = True) -> Set[STRIPS_Operator]:
+    static_belief_predicates = set()
+    if static_optimization:
+        static_belief_predicates = compute_static_belief_predicates(Pi)
+
     O_A_Prime = set()
 
     for o in Pi.O:
@@ -90,7 +95,7 @@ def compute_O_A_Prime(Pi: QU_STRIPS) -> Set[STRIPS_Operator]:
         # and conditional effects of o
         # NOTE: We don't want duplicate
         # beliefs for the same ground atomic formula
-        S = set()
+        S: Set[Prop] = set()
         S |= o.pre
         for (c, l) in chain(o.add_p, o.add_n):
             S.add(c); S.add(l)
@@ -100,11 +105,35 @@ def compute_O_A_Prime(Pi: QU_STRIPS) -> Set[STRIPS_Operator]:
         # Determine which belief levels are possible
         # for each proposition
         possible_beliefs = []
+        optimized_is_invalid = False
         for p in S_list:
-            if p in o.pre:
+            # NOTE: If the predicate is static, then only assign it
+            # the level that it's at in the initial state
+            p_sigma = None
+            for pi_sigma in static_belief_predicates:
+                if ground(pi_sigma) == p:
+                    p_sigma = pi_sigma
+                    break
+
+            if p_sigma is not None: # Belief is static
+                p_strength = deepcopy(strength(p_sigma))
+                if p in o.pre and p_strength in Pi.B_i.positives():
+                    possible_beliefs.append([p_strength])
+                elif p not in o.pre:
+                    possible_beliefs.append([p_strength])
+                else: # Discard operator as actor can never apply it
+                    optimized_is_invalid = True
+                    break
+            elif p in o.pre:
                 possible_beliefs.append(list(Pi.B_i.positives()))
             else:
                 possible_beliefs.append(list(Pi.B_i))
+
+        # The agent will never be able to apply this operator
+        # since a static belief in the initial state does not satisfy
+        # the precondition
+        if optimized_is_invalid:
+            continue
 
         p_at_belief_lists = product(*possible_beliefs)
 
@@ -193,9 +222,27 @@ def compute_O_A_Prime(Pi: QU_STRIPS) -> Set[STRIPS_Operator]:
 
     return O_A_Prime
 
-def compile_qu_strips(Pi: QU_STRIPS) -> STRIPS_Problem:
+
+# TODO: Rename method name
+def compute_static_belief_predicates(Pi: QU_STRIPS) -> Set[BeliefProp]:
+    candidate_belief_predicates = deepcopy(Pi.I)
+    for o in Pi.O:
+        for (_, l) in chain(o.add_p, o.add_n):
+            # Attempt to find a belief of l in the inital state
+            l_sigma = None
+            for p_sigma in candidate_belief_predicates:
+                if ground(p_sigma) == l:
+                    l_sigma = p_sigma
+                    break
+            # If found, remove it as a candidate
+            if l_sigma is not None:
+                candidate_belief_predicates -= {l_sigma}
+    return candidate_belief_predicates
+
+
+def compile_qu_strips(Pi: QU_STRIPS, static_optimization: bool = True) -> STRIPS_Problem:
     P_Prime = { X_P(p_sigma) for p_sigma in Pi.P_sigma}
-    O_Prime = compute_O_G_Prime(Pi) | compute_O_A_Prime(Pi)
+    O_Prime = compute_O_G_Prime(Pi) | compute_O_A_Prime(Pi, static_optimization)
     I_Prime = { X_P(p) for p in Pi.I}
     G_Prime = { Prop("goal")}
     return STRIPS_Problem(P_Prime, O_Prime, I_Prime, G_Prime)
