@@ -7,6 +7,7 @@ for a belief level of a trap at each of
 the nodes at a branch.
 """
 from datetime import datetime
+from pathlib import Path
 from itertools import product
 
 from pddl.formatter import domain_to_string, problem_to_string
@@ -30,6 +31,9 @@ from structures import (
 
 def generate_escape_problem(n: int) -> QU_STRIPS:
     assert isinstance(n, int) and n > 0
+    if n not in range(5):
+        print("[Warning] Didn't generate for n >= 5")
+
     objects = {
         "location": ["start", "end"]
     }
@@ -56,11 +60,17 @@ def generate_escape_problem(n: int) -> QU_STRIPS:
 
     possible_trap_beliefs = [list(BeliefLevel) for _ in range(n)]
     trap_belief_lists = product(*possible_trap_beliefs)
-    if n > 2:
-        # Cut half the branches by factor of n
+    if n == 3:
+        # Cut the branches by factor of n
         trap_belief_lists = (
             tbl for i, tbl in enumerate(trap_belief_lists)
             if i % n == 0
+        )
+    elif n == 4:
+        # Cut the branches by factor of n^2
+        trap_belief_lists = (
+            tbl for i, tbl in enumerate(trap_belief_lists)
+            if i % (n ** 2) == 0
         )
 
     move_agent = Lifted_Belief_Operator("move-agent",
@@ -113,9 +123,10 @@ def generate_escape_problem(n: int) -> QU_STRIPS:
                     "?l1": last_name, "?l2": "end"
         }))
 
+
     # Add CONNECTED -2 to all other possible connections
     for loc1, loc2 in product(objects["location"], objects["location"]):
-        if BeliefProp(f"CONNECTED-{loc1}-{loc2}", 2) not in initial:
+        if Prop(f"CONNECTED-{loc1}-{loc2}") not in propositions:
             propositions.add(Prop(f"CONNECTED-{loc1}-{loc2}"))
             initial.add(BeliefProp(f"CONNECTED-{loc1}-{loc2}", -2))
 
@@ -143,7 +154,7 @@ def generate_escape_problem(n: int) -> QU_STRIPS:
 
 
 if __name__ == "__main__":
-    for n in range(1, 4):
+    for n in range(1, 5):
         print(f"Generating escape-{n}... ", end="", flush=True)
         problem = generate_escape_problem(n)
         print("Done.")
@@ -164,6 +175,7 @@ if __name__ == "__main__":
             f"escape-{n}",
             strips_problem
         )
+        Path(f"benchmarks").mkdir(exist_ok=True)
         with open(f'benchmarks/escape-{n}-compiled-domain.pddl', 'w') as file:
             file.write(domain_to_string(strips_pddl_domain))
         print("Done.")
