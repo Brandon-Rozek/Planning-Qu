@@ -76,15 +76,25 @@ lifted_operators = {
         },
         # Add Positive Beliefs
         {
-            (frozenset({Pred("TRUE", [])}), frozenset({Pred("at-agent", ["location"], ["?l2"])})),
+            (
+                frozenset({Pred("TRUE", [])}),
+                frozenset({Pred("at-agent", ["location"], ["?l2"])})
+            ),
         },
         # Add Negative Beliefs
         {
-            (frozenset({Pred("TRUE", [])}), frozenset({Pred("at-agent", ['location'], ['?l1'])})),
-            (frozenset({Pred("AT-TRAP", ["location"], ["?l2"])}), frozenset({Pred("not-caught", [])}))
+            (
+                frozenset({Pred("TRUE", [])}),
+                frozenset({Pred("at-agent", ['location'], ['?l1'])})
+            ),
+            (
+                frozenset({Pred("AT-TRAP", ["location"], ["?l2"])}),
+                frozenset({Pred("not-caught", [])})
+            )
         }
     )
 }
+
 
 operators = set()
 

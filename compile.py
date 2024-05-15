@@ -167,7 +167,7 @@ def compute_O_A_Prime(Pi: QU_STRIPS, static_optimization: bool = True) -> Set[ST
 
                 # Skip if sigma_c isn't > b_0
                 assert c_sigma is not None
-                if c_sigma.level <= BeliefLevel.NOTHING:
+                if c_sigma.level <= BeliefLevel.AGNOSTIC:
                     continue
 
                 # Compute new Belief Level and add to add_p
@@ -186,7 +186,7 @@ def compute_O_A_Prime(Pi: QU_STRIPS, static_optimization: bool = True) -> Set[ST
 
                 # Skip if sigma_c isn't > b_0
                 assert c_sigma is not None
-                if c_sigma.level <= BeliefLevel.NOTHING:
+                if c_sigma.level <= BeliefLevel.AGNOSTIC:
                     continue
 
                 # Compute new Belief Level and add to add_n
@@ -201,7 +201,7 @@ def compute_O_A_Prime(Pi: QU_STRIPS, static_optimization: bool = True) -> Set[ST
                 # for this compiled operator
                 effect_fires = False
                 for p_sigma in S_sigma:
-                    if ground(p_sigma) == c and strength(p_sigma) > BeliefLevel.NOTHING:
+                    if ground(p_sigma) == c and strength(p_sigma) > BeliefLevel.AGNOSTIC:
                         effect_fires = True
                         break
                 if effect_fires:

@@ -20,7 +20,7 @@ __all__ = [
 class BeliefLevel5(Enum):
     CERTAINLY_NOT = -2
     EVIDENTLY_NOT = -1
-    NOTHING = 0 # TODO: Rename to better capture "no belief for or against"
+    AGNOSTIC = 0
     EVIDENTLY = 1
     CERTAINLY = 2
 
@@ -35,14 +35,14 @@ class BeliefLevel5(Enum):
         return {
             BeliefLevel5.CERTAINLY_NOT: BeliefLevel5.CERTAINLY,
             BeliefLevel5.EVIDENTLY_NOT: BeliefLevel5.EVIDENTLY,
-            BeliefLevel5.NOTHING: BeliefLevel5.NOTHING,
+            BeliefLevel5.AGNOSTIC: BeliefLevel5.AGNOSTIC,
             BeliefLevel5.EVIDENTLY: BeliefLevel5.EVIDENTLY_NOT,
             BeliefLevel5.CERTAINLY: BeliefLevel5.CERTAINLY_NOT
         }[self]
 
     @staticmethod
     def positives():
-        return (p for p in iter(BeliefLevel5) if p > BeliefLevel5.NOTHING)
+        return (p for p in iter(BeliefLevel5) if p > BeliefLevel5.AGNOSTIC)
 
     def __hash__(self):
         return self.value
@@ -72,11 +72,13 @@ class BeliefProp:
         assert isinstance(self.prop, (Prop, str)), f"{self.prop} is not of type Prop or str"
         if isinstance(self.prop, str):
             self.prop = Prop(self.prop)
+
+        assert isinstance(self.level, (int, BeliefLevel)), f"{self.level} is not of type BeliefLevel or int"
         if isinstance(self.level, int):
             self.level = BeliefLevel(self.level)
 
     def __hash__(self):
-        return hash(self.prop) * hash(self.level)
+        return hash((self.prop, self.level))
 
     def __eq__(self, other):
         return isinstance(other, BeliefProp) and self.prop == other.prop and self.level == other.level
@@ -105,8 +107,8 @@ class BeliefOperator:
 
 
 def satisfies_single(s: BeliefState, p: Prop):
-    for belief_p in s:
-        if ground(belief_p) == p and strength(belief_p) > BeliefLevel.NOTHING:
+    for p_sigma in s:
+        if ground(p_sigma) == p and strength(p_sigma) > BeliefLevel.AGNOSTIC:
             return True
     return False
 
@@ -114,6 +116,7 @@ def satisfies(s: BeliefState, requirements: Set[Prop]):
     return all((satisfies_single(s, p) for p in requirements))
 
 def wlp(s: BeliefState, conds: Set[Prop]) -> BeliefLevel:
+    """Weakest Link Principle"""
     cond_strengths = { strength(si) for si in s if ground(si) in conds }
     return min(cond_strengths)
 
@@ -126,12 +129,12 @@ def derive_positive_beliefs(o: BeliefOperator, s: BeliefState) -> BeliefState:
     for (c, l) in o.add_p:
         if not satisfies(s, c):
             continue
-        
+
         sigma = wlp(s, o.pre | c)
-        
+
         for li in l:
             result.add(BeliefProp(li, sigma))
-    
+
     return result
 
 def derive_negative_beliefs(o: BeliefOperator, s: BeliefState) -> BeliefState:
@@ -140,15 +143,15 @@ def derive_negative_beliefs(o: BeliefOperator, s: BeliefState) -> BeliefState:
     Assumes precondition is satisfied
     """
     result = set()
-    for (c, l) in o.add_p:
+    for (c, l) in o.add_n:
         if not satisfies(s, c):
             continue
-        
-        sigma = wlp(s, o.pre | c)
-        
+
+        sigma = wlp(s, o.pre | c).inverse()
+
         for li in l:
             result.add(BeliefProp(li, sigma))
-    
+
     return result
 
 def withinBoth(p: Prop, pos: Set[BeliefProp], neg: Set[BeliefProp]):
@@ -157,6 +160,10 @@ def withinBoth(p: Prop, pos: Set[BeliefProp], neg: Set[BeliefProp]):
         if ground(p_sigma) == p:
             withinPos = True
             break
+
+    if not withinPos:
+        return False
+
     withinNeg = False
     for p_sigma in neg:
         if ground(p_sigma) == p:
@@ -172,7 +179,7 @@ def derive_agnostic_beliefs(pos: Set[BeliefProp], neg: Set[BeliefProp]):
     for p_sigma in (pos | neg):
         p = ground(p_sigma)
         if withinBoth(p, pos, neg):
-            result.add(BeliefProp(p, BeliefLevel.NOTHING))
+            result.add(BeliefProp(p, BeliefLevel.AGNOSTIC))
     return result
 
 def strongest_p(p: Prop, sigma_i: BeliefLevel, pos: Set[BeliefProp], s: BeliefState):
@@ -183,8 +190,8 @@ def strongest_p(p: Prop, sigma_i: BeliefLevel, pos: Set[BeliefProp], s: BeliefSt
                 return False
     return True
 
-def strongest_n(p: Prop, sigma_i: BeliefLevel, pos: Set[BeliefProp], s: BeliefState):
-    for p_sigma in (pos | s):
+def strongest_n(p: Prop, sigma_i: BeliefLevel, neg: Set[BeliefProp], s: BeliefState):
+    for p_sigma in (neg | s):
         if ground(p_sigma) == p:
             sigma_j = strength(p_sigma)
             if sigma_j < sigma_i:
@@ -197,7 +204,7 @@ def derive_strongest_pos_beliefs(s: BeliefState, pos: Set[BeliefProp], neg: Set[
         p = ground(p_sigma)
         if withinBoth(p, pos, neg):
             continue
-        if not strongest_p(p, strength(p_sigma), s):
+        if not strongest_p(p, strength(p_sigma), pos, s):
             continue
         result.add(p_sigma)
     return result
@@ -208,7 +215,7 @@ def derive_strongest_neg_beliefs(s: BeliefState, pos: Set[BeliefProp], neg: Set[
         p = ground(p_sigma)
         if withinBoth(p, pos, neg):
             continue
-        if not strongest_n(p, strength(p_sigma), s):
+        if not strongest_n(p, strength(p_sigma), neg, s):
             continue
         result.add(p_sigma)
     return result
@@ -239,26 +246,6 @@ def check_consistent(s: BeliefState) -> bool:
         if s1 != s2:
             if ground(s1) == ground(s2):
                 return False
-    return True
-
-def check_proper(o: BeliefOperator) -> bool:
-    # Condition 1
-    for ((c1, l1), (c2, l2)) in product(o.add_p, o.add_p):
-        if (c1, l1) != (c2, l2):
-            if l1 == l2:
-                return False
-
-    # Condition 2
-    for ((c1, l1), (c2, l2)) in product(o.add_n, o.add_n):
-        if (c1, l1) != (c2, l2):
-            if l1 == l2:
-                return False
-
-    # Condition 3
-    for ((_, lp), (_, ln)) in product(o.add_p, o.add_n):
-        if lp == ln:
-            return False
-
     return True
 
 
@@ -304,8 +291,10 @@ class QU_STRIPS:
         for p in self.P:
             # Find belief level that's in I
             sigma = next((s for s in list(BeliefLevel) if BeliefProp(p, s) in self.I), None)
-            # TODO: Assume a belief level of zero and print out a notice
-            assert sigma is not None, f"Formula {p} does not have an associated belief level in I."
+
+            if sigma is None:
+                print(f"Warning: No belief about {p} found in the initial state. Assuming a belief level of 0.")
+                self.I.add(BeliefProp(p, BeliefLevel.AGNOSTIC))
             count += 1
 
         assert count == len(self.I)
@@ -318,15 +307,16 @@ class QU_STRIPS:
         candidate_belief_predicates = deepcopy(self.I)
         for o in self.O:
             for (_, l) in chain(o.add_p, o.add_n):
-                # Attempt to find a belief of l in the inital state
-                l_sigma = None
-                for p_sigma in candidate_belief_predicates:
-                    if ground(p_sigma) == l:
-                        l_sigma = p_sigma
-                        break
-                # If found, remove it as a candidate
-                if l_sigma is not None:
-                    candidate_belief_predicates -= {l_sigma}
+                for li in l:
+                    # Attempt to find a belief of l in the inital state
+                    l_sigma = None
+                    for p_sigma in candidate_belief_predicates:
+                        if ground(p_sigma) == li:
+                            l_sigma = p_sigma
+                            break
+                    # If found, remove it as a candidate
+                    if l_sigma is not None:
+                        candidate_belief_predicates -= {l_sigma}
         return candidate_belief_predicates
 
     def reduce_belief_operators(self):
@@ -341,7 +331,7 @@ class QU_STRIPS:
             discard_operator = False
             for p in o.pre:
                 for sp in self.static_belief_predicates:
-                    if ground(sp) == p and strength(sp) < BeliefLevel.NOTHING:
+                    if ground(sp) == p and strength(sp) <= BeliefLevel.AGNOSTIC:
                         discard_operator = True
                         break
 
