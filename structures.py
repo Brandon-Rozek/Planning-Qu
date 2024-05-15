@@ -93,8 +93,8 @@ BeliefState = Set[BeliefProp]
 class BeliefOperator:
     def __init__(
             self, name: str, pre: Optional[Set[Prop]] = None,
-            add_p: Optional[Set[Tuple[Prop, Prop]]] = None,
-            add_n: Optional[Set[Tuple[Prop, Prop]]] = None,
+            add_p: Optional[Set[Tuple[Set[Prop], Set[Prop]]]] = None,
+            add_n: Optional[Set[Tuple[Set[Prop], Set[Prop]]]] = None,
             cost: int = 1
     ):
         self.name = name
@@ -113,48 +113,125 @@ def satisfies_single(s: BeliefState, p: Prop):
 def satisfies(s: BeliefState, requirements: Set[Prop]):
     return all((satisfies_single(s, p) for p in requirements))
 
-def compute_belief_p(l: Prop, s: BeliefState, conds: Set[Prop]) -> BeliefLevel:
-    # First compute based on the weakest link principle
+def wlp(s: BeliefState, conds: Set[Prop]) -> BeliefLevel:
     cond_strengths = { strength(si) for si in s if ground(si) in conds }
-    sigma_1 = min(cond_strengths)
+    return min(cond_strengths)
 
-    # Grab the current likelihood value (will throw exception if not found)
-    sigma_2 = next((strength(li) for li in s if ground(li) == l))
+def derive_positive_beliefs(o: BeliefOperator, s: BeliefState) -> BeliefState:
+    """
+    Represents the set Add^\dagger_P
+    Assumes precondition is satisfied
+    """
+    result = set()
+    for (c, l) in o.add_p:
+        if not satisfies(s, c):
+            continue
+        
+        sigma = wlp(s, o.pre | c)
+        
+        for li in l:
+            result.add(BeliefProp(li, sigma))
+    
+    return result
 
-    return max(sigma_1, sigma_2)
+def derive_negative_beliefs(o: BeliefOperator, s: BeliefState) -> BeliefState:
+    """
+    Represents the set Add^\dagger_N
+    Assumes precondition is satisfied
+    """
+    result = set()
+    for (c, l) in o.add_p:
+        if not satisfies(s, c):
+            continue
+        
+        sigma = wlp(s, o.pre | c)
+        
+        for li in l:
+            result.add(BeliefProp(li, sigma))
+    
+    return result
 
-def compute_belief_n(l: Prop, s: BeliefState, conds: Set[Prop]):
-    # First compute based on the weakest link principle
-    cond_strengths = { strength(si) for si in s if ground(si) in conds }
-    sigma_1 = min(cond_strengths).inverse()
+def withinBoth(p: Prop, pos: Set[BeliefProp], neg: Set[BeliefProp]):
+    withinPos = False
+    for p_sigma in pos:
+        if ground(p_sigma) == p:
+            withinPos = True
+            break
+    withinNeg = False
+    for p_sigma in neg:
+        if ground(p_sigma) == p:
+            withinNeg = True
+            break
+    return withinPos and withinNeg
 
-    # Grab the current likelihood value (will throw exception if not found)
-    sigma_2 = next((strength(li) for li in s if ground(li) == l))
+def derive_agnostic_beliefs(pos: Set[BeliefProp], neg: Set[BeliefProp]):
+    """
+    Computes Add^\dagger_1
+    """
+    result = set()
+    for p_sigma in (pos | neg):
+        p = ground(p_sigma)
+        if withinBoth(p, pos, neg):
+            result.add(BeliefProp(p, BeliefLevel.NOTHING))
+    return result
 
-    return min(sigma_1, sigma_2)
+def strongest_p(p: Prop, sigma_i: BeliefLevel, pos: Set[BeliefProp], s: BeliefState):
+    for p_sigma in (pos | s):
+        if ground(p_sigma) == p:
+            sigma_j = strength(p_sigma)
+            if sigma_j > sigma_i:
+                return False
+    return True
 
-def apply(s: BeliefState, o: BeliefOperator) -> BeliefState:
+def strongest_n(p: Prop, sigma_i: BeliefLevel, pos: Set[BeliefProp], s: BeliefState):
+    for p_sigma in (pos | s):
+        if ground(p_sigma) == p:
+            sigma_j = strength(p_sigma)
+            if sigma_j < sigma_i:
+                return False
+    return True
+
+def derive_strongest_pos_beliefs(s: BeliefState, pos: Set[BeliefProp], neg: Set[BeliefProp]):
+    result = set()
+    for p_sigma in pos:
+        p = ground(p_sigma)
+        if withinBoth(p, pos, neg):
+            continue
+        if not strongest_p(p, strength(p_sigma), s):
+            continue
+        result.add(p_sigma)
+    return result
+
+def derive_strongest_neg_beliefs(s: BeliefState, pos: Set[BeliefProp], neg: Set[BeliefProp]):
+    result = set()
+    for p_sigma in neg:
+        p = ground(p_sigma)
+        if withinBoth(p, pos, neg):
+            continue
+        if not strongest_n(p, strength(p_sigma), s):
+            continue
+        result.add(p_sigma)
+    return result
+
+def apply(o: BeliefOperator, s: BeliefState) -> BeliefState:
     # NOTE: Assumes that o is applicable at state s
 
-    add_p_prime = set()
-    for (c, l) in o.add_p:
-        if satisfies_single(s, c):
-            new_belief = BeliefProp(l, compute_belief_p(l, s, o.pre | {c}))
-            add_p_prime.add(new_belief)
+    pos_beliefs = derive_positive_beliefs(o, s)
+    neg_beliefs = derive_negative_beliefs(o, s)
 
-    add_n_prime = set()
-    for (c, l) in o.add_n:
-        if satisfies_single(s, c):
-            new_belief = BeliefProp(l, compute_belief_n(l, s, o.pre | {c}))
-            add_n_prime.add(new_belief)
+    add_1 = derive_agnostic_beliefs(pos_beliefs, neg_beliefs)
+    add_2 = derive_strongest_pos_beliefs(s, pos_beliefs, neg_beliefs)
+    add_3 = derive_strongest_neg_beliefs(s, pos_beliefs, neg_beliefs)
 
-    del_prime = set()
-    for l_sigma_prime in chain(add_p_prime, add_n_prime):
+    add_dagger = add_1 | add_2 | add_3
+
+    del_dagger = set()
+    for l_sigma_prime in add_dagger:
         for sigma in list(BeliefLevel):
             if sigma != strength(l_sigma_prime):
-                del_prime.add(BeliefProp(ground(l_sigma_prime), sigma))
+                del_dagger.add(BeliefProp(ground(l_sigma_prime), sigma))
 
-    return (s | add_p_prime | add_n_prime) - del_prime
+    return (s | add_dagger) - del_dagger
 
 
 def check_consistent(s: BeliefState) -> bool:
