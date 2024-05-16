@@ -171,51 +171,51 @@ def withinBoth(p: Prop, pos: Set[BeliefProp], neg: Set[BeliefProp]):
             break
     return withinPos and withinNeg
 
-def derive_agnostic_beliefs(pos: Set[BeliefProp], neg: Set[BeliefProp]):
+def derive_agnostic_beliefs(add_dagger_p: Set[BeliefProp], add_dagger_n: Set[BeliefProp]):
     """
     Computes Add^\dagger_1
     """
     result = set()
-    for p_sigma in (pos | neg):
+    for p_sigma in (add_dagger_p | add_dagger_n):
         p = ground(p_sigma)
-        if withinBoth(p, pos, neg):
+        if withinBoth(p, add_dagger_p, add_dagger_n):
             result.add(BeliefProp(p, BeliefLevel.AGNOSTIC))
     return result
 
-def strongest_p(p: Prop, sigma_i: BeliefLevel, pos: Set[BeliefProp], s: BeliefState):
-    for p_sigma in (pos | s):
+def strongest_p(p: Prop, sigma_i: BeliefLevel, add_dagger_p: Set[BeliefProp], s: BeliefState):
+    for p_sigma in (add_dagger_p | s):
         if ground(p_sigma) == p:
             sigma_j = strength(p_sigma)
             if sigma_j > sigma_i:
                 return False
     return True
 
-def strongest_n(p: Prop, sigma_i: BeliefLevel, neg: Set[BeliefProp], s: BeliefState):
-    for p_sigma in (neg | s):
+def strongest_n(p: Prop, sigma_i: BeliefLevel, add_dagger_n: Set[BeliefProp], s: BeliefState):
+    for p_sigma in (add_dagger_n | s):
         if ground(p_sigma) == p:
             sigma_j = strength(p_sigma)
             if sigma_j < sigma_i:
                 return False
     return True
 
-def derive_strongest_pos_beliefs(s: BeliefState, pos: Set[BeliefProp], neg: Set[BeliefProp]):
+def derive_strongest_pos_beliefs(s: BeliefState, add_dagger_p: Set[BeliefProp], add_dagger_n: Set[BeliefProp]):
     result = set()
-    for p_sigma in pos:
+    for p_sigma in add_dagger_p:
         p = ground(p_sigma)
-        if withinBoth(p, pos, neg):
+        if withinBoth(p, add_dagger_p, add_dagger_n):
             continue
-        if not strongest_p(p, strength(p_sigma), pos, s):
+        if not strongest_p(p, strength(p_sigma), add_dagger_p, s):
             continue
         result.add(p_sigma)
     return result
 
-def derive_strongest_neg_beliefs(s: BeliefState, pos: Set[BeliefProp], neg: Set[BeliefProp]):
+def derive_strongest_neg_beliefs(s: BeliefState, add_dagger_p: Set[BeliefProp], add_dagger_n: Set[BeliefProp]):
     result = set()
-    for p_sigma in neg:
+    for p_sigma in add_dagger_n:
         p = ground(p_sigma)
-        if withinBoth(p, pos, neg):
+        if withinBoth(p, add_dagger_p, add_dagger_n):
             continue
-        if not strongest_n(p, strength(p_sigma), neg, s):
+        if not strongest_n(p, strength(p_sigma), add_dagger_n, s):
             continue
         result.add(p_sigma)
     return result
@@ -223,14 +223,14 @@ def derive_strongest_neg_beliefs(s: BeliefState, pos: Set[BeliefProp], neg: Set[
 def apply(o: BeliefOperator, s: BeliefState) -> BeliefState:
     # NOTE: Assumes that o is applicable at state s
 
-    pos_beliefs = derive_positive_beliefs(o, s)
-    neg_beliefs = derive_negative_beliefs(o, s)
+    add_dagger_p = derive_positive_beliefs(o, s)
+    add_dagger_n = derive_negative_beliefs(o, s)
 
-    add_1 = derive_agnostic_beliefs(pos_beliefs, neg_beliefs)
-    add_2 = derive_strongest_pos_beliefs(s, pos_beliefs, neg_beliefs)
-    add_3 = derive_strongest_neg_beliefs(s, pos_beliefs, neg_beliefs)
+    add_dagger_1 = derive_agnostic_beliefs(add_dagger_p, add_dagger_n)
+    add_dagger_2 = derive_strongest_pos_beliefs(s, add_dagger_p, add_dagger_n)
+    add_dagger_3 = derive_strongest_neg_beliefs(s, add_dagger_p, add_dagger_n)
 
-    add_dagger = add_1 | add_2 | add_3
+    add_dagger = add_dagger_1 | add_dagger_2 | add_dagger_3
 
     del_dagger = set()
     for l_sigma_prime in add_dagger:

@@ -18,11 +18,11 @@ from pddl.formatter import domain_to_string, problem_to_string
 #     generate_pddl_domain,
 #     generate_pddl_problem
 # )
-# from compile import (
-#     compile_qu_strips,
-#     print_strips_plan,
-#     bfs_strips_plan
-# )
+from compile import (
+    compile_qu_strips,
+    print_strips_plan,
+    bfs_strips_plan
+)
 from structures import (
     Prop,
     BeliefProp,
@@ -254,13 +254,13 @@ plans = bfs_plan(problem)
 for plan in plans:
     print_plan(plan)
 
-# print("Compiling QU_STRIPS to STRIPS")
-# strips_problem = compile_qu_strips(problem)
+print("Compiling QU_STRIPS to STRIPS")
+strips_problem = compile_qu_strips(problem, c_star=100)
 
-# print("Searching for plan within STRIPS")
-# strips_plans = bfs_strips_plan(strips_problem)
-# for plan in strips_plans:
-#     print_strips_plan(plan)
+print("Searching for plan within STRIPS")
+strips_plans = bfs_strips_plan(strips_problem)
+for plan in strips_plans:
+    print_strips_plan(plan)
 
 # print("Generating PDDL Domain")
 # strips_pddl_domain = generate_pddl_domain(
