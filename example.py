@@ -14,10 +14,10 @@ Lists show potential paths
 """
 from pddl.formatter import domain_to_string, problem_to_string
 
-# from pddlgen import (
-#     generate_pddl_domain,
-#     generate_pddl_problem
-# )
+from pddlgen import (
+    generate_pddl_domain,
+    generate_pddl_problem
+)
 from compile import (
     compile_qu_strips,
     print_strips_plan,
@@ -262,20 +262,20 @@ strips_plans = bfs_strips_plan(strips_problem)
 for plan in strips_plans:
     print_strips_plan(plan)
 
-# print("Generating PDDL Domain")
-# strips_pddl_domain = generate_pddl_domain(
-#     "escape",
-#     strips_problem
-# )
-# with open('compiled-domain.pddl', 'w') as file:
-#     file.write(domain_to_string(strips_pddl_domain))
+print("Generating PDDL Domain")
+strips_pddl_domain = generate_pddl_domain(
+    "escape",
+    strips_problem
+)
+with open('compiled-domain.pddl', 'w') as file:
+    file.write(domain_to_string(strips_pddl_domain))
 
 
-# print("Generating PDDL Problem")
-# strips_pddl_problem = generate_pddl_problem(
-#     "escape-instance",
-#     strips_problem,
-#     strips_pddl_domain
-# )
-# with open('compiled-problem.pddl', 'w') as file:
-#     file.write(problem_to_string(strips_pddl_problem))
+print("Generating PDDL Problem")
+strips_pddl_problem = generate_pddl_problem(
+    "escape-instance",
+    strips_problem,
+    strips_pddl_domain
+)
+with open('compiled-problem.pddl', 'w') as file:
+    file.write(problem_to_string(strips_pddl_problem))

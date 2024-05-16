@@ -83,12 +83,21 @@ def generate_escape_problem(n: int) -> QU_STRIPS:
             },
             # Add Positive Beliefs
             {
-                (Pred("TRUE", []), Pred("at-agent", ["location"], ["?l2"])),
+                (
+                    frozenset({Pred("TRUE", [])}),
+                    frozenset({Pred("at-agent", ["location"], ["?l2"])})
+                ),
             },
             # Add Negative Beliefs
             {
-                (Pred("TRUE", []), Pred("at-agent", ['location'], ['?l1'])),
-                (Pred("AT-TRAP", ["location"], ["?l2"]), Pred("not-caught", []))
+                (
+                    frozenset({Pred("TRUE", [])}),
+                    frozenset({Pred("at-agent", ['location'], ['?l1'])})
+                ),
+                (
+                    frozenset({Pred("AT-TRAP", ["location"], ["?l2"])}),
+                    frozenset({Pred("not-caught", [])})
+                )
             }
         )
 
@@ -164,7 +173,7 @@ if __name__ == "__main__":
 
         print("Compiling QU_STRIPS to STRIPS")
         start_time = datetime.now()
-        strips_problem = compile_qu_strips(problem)
+        strips_problem = compile_qu_strips(problem, c_star=100)
         print(f"Finished in {datetime.now() - start_time}")
 
         print("|P prime| =", len(strips_problem.P))
