@@ -76,15 +76,25 @@ lifted_operators = {
         },
         # Add Positive Beliefs
         {
-            (Pred("TRUE", []), Pred("at-agent", ["location"], ["?l2"])),
+            (
+                frozenset({Pred("TRUE", [])}),
+                frozenset({Pred("at-agent", ["location"], ["?l2"])})
+            ),
         },
         # Add Negative Beliefs
         {
-            (Pred("TRUE", []), Pred("at-agent", ['location'], ['?l1'])),
-            (Pred("AT-TRAP", ["location"], ["?l2"]), Pred("not-caught", []))
+            (
+                frozenset({Pred("TRUE", [])}),
+                frozenset({Pred("at-agent", ['location'], ['?l1'])})
+            ),
+            (
+                frozenset({Pred("AT-TRAP", ["location"], ["?l2"])}),
+                frozenset({Pred("not-caught", [])})
+            )
         }
     )
 }
+
 
 operators = set()
 
@@ -245,7 +255,7 @@ for plan in plans:
     print_plan(plan)
 
 print("Compiling QU_STRIPS to STRIPS")
-strips_problem = compile_qu_strips(problem)
+strips_problem = compile_qu_strips(problem, c_star=100)
 
 print("Searching for plan within STRIPS")
 strips_plans = bfs_strips_plan(strips_problem)

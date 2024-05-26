@@ -57,8 +57,8 @@ class Lifted_Belief_Operator:
             # parameters : [(name, type), ...]
             parameters: Optional[List[Tuple[str, str]]] = None,
             pre: Optional[Set[Pred]] = None,
-            add_p: Optional[Set[Tuple[Pred, Pred]]] = None,
-            add_n: Optional[Set[Tuple[Pred, Pred]]] = None,
+            add_p: Optional[Set[Tuple[Set[Pred], Set[Pred]]]] = None,
+            add_n: Optional[Set[Tuple[Set[Pred], Set[Pred]]]] = None,
             cost: int = 1
     ):
         self.name = name
@@ -94,37 +94,53 @@ def instantiate_lifted_operator(lo: Lifted_Belief_Operator, parameters: Dict[str
     # Adjust add_p
     grounded_add_p = set()
     for c, l in lo.add_p:
-        assert len(c.arg_names) == len(c.signature)
-        assert len(l.arg_names) == len(l.signature)
-        new_c_args = []
-        for arg_name in c.arg_names:
-            new_arg_name = parameters[arg_name] if arg_name in parameters else arg_name
-            new_c_args.append(new_arg_name)
-        new_l_args = []
-        for arg_name in l.arg_names:
-            new_arg_name = parameters[arg_name] if arg_name in parameters else arg_name
-            new_l_args.append(new_arg_name)
+        new_ci = set()
+        for ci in c:
+            assert len(ci.arg_names) == len(ci.signature)
+            new_ci_args = []
+            for arg_name in ci.arg_names:
+                new_arg_name = parameters[arg_name] if arg_name in parameters else arg_name
+                new_ci_args.append(new_arg_name)
+            new_ci.add(ground_predicate_from_args(ci, new_ci_args))
+        
+        new_li = set()
+        for li in l:
+            assert len(li.arg_names) == len(li.signature)
+            new_li_args = []
+            for arg_name in li.arg_names:
+                new_arg_name = parameters[arg_name] if arg_name in parameters else arg_name
+                new_li_args.append(new_arg_name)
+            new_li.add(ground_predicate_from_args(li, new_li_args))
+        
         grounded_add_p.add((
-            ground_predicate_from_args(c, new_c_args),
-            ground_predicate_from_args(l, new_l_args)
+            frozenset(new_ci),
+            frozenset(new_li)
         ))
 
     # Adjust add_n
     grounded_add_n = set()
     for c, l in lo.add_n:
-        assert len(c.arg_names) == len(c.signature)
-        assert len(l.arg_names) == len(l.signature)
-        new_c_args = []
-        for arg_name in c.arg_names:
-            new_arg_name = parameters[arg_name] if arg_name in parameters else arg_name
-            new_c_args.append(new_arg_name)
-        new_l_args = []
-        for arg_name in l.arg_names:
-            new_arg_name = parameters[arg_name] if arg_name in parameters else arg_name
-            new_l_args.append(new_arg_name)
+        new_ci = set()
+        for ci in c:
+            assert len(ci.arg_names) == len(ci.signature)
+            new_ci_args = []
+            for arg_name in ci.arg_names:
+                new_arg_name = parameters[arg_name] if arg_name in parameters else arg_name
+                new_ci_args.append(new_arg_name)
+            new_ci.add(ground_predicate_from_args(ci, new_ci_args))
+
+        new_li = set()
+        for li in l:
+            assert len(li.arg_names) == len(li.signature)
+            new_li_args = []
+            for arg_name in li.arg_names:
+                new_arg_name = parameters[arg_name] if arg_name in parameters else arg_name
+                new_li_args.append(new_arg_name)
+            new_li.add(ground_predicate_from_args(li, new_li_args))
+
         grounded_add_n.add((
-            ground_predicate_from_args(c, new_c_args),
-            ground_predicate_from_args(l, new_l_args)
+            frozenset(new_ci),
+            frozenset(new_li)
         ))
 
     return BeliefOperator(name, grounded_pre, grounded_add_p, grounded_add_n, lo.cost)

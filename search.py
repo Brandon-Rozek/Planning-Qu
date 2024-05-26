@@ -41,7 +41,7 @@ def bfs_plan(problem: QU_STRIPS) -> List[List[BeliefOperator]]:
             # Only look at applicable operators
             if not satisfies(state, operator.pre):
                 continue
-            next_state = apply(state, operator)
+            next_state = apply(operator, state)
             next_plan = deepcopy(plan)
             next_plan.append(operator)
             next_plan_cost = sum(o.cost for o in next_plan)
